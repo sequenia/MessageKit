@@ -50,6 +50,7 @@ open class MessageLabel: UILabel {
     }()
 
     internal lazy var rangesForDetectors: [DetectorType: [(NSRange, MessageTextCheckingType)]] = [:]
+    internal lazy var rangesForValues = [NSRange: String]()
     
     private var isConfiguring: Bool = false
 
@@ -120,7 +121,7 @@ open class MessageLabel: UILabel {
         return size
     }
     
-    internal var messageLabelFont: UIFont?
+    public var messageLabelFont: UIFont?
 
     private var attributesNeedUpdate = false
 
@@ -148,6 +149,8 @@ open class MessageLabel: UILabel {
 
     open internal(set) var customAttributes: [NSRegularExpression: [NSAttributedString.Key: Any]] = [:]
 
+    open internal(set) var rangeAttributes: [NSRange: [NSAttributedString.Key: Any]] = [:]
+
     public func setAttributes(_ attributes: [NSAttributedString.Key: Any], detector: DetectorType) {
         switch detector {
         case .phoneNumber:
@@ -171,6 +174,31 @@ open class MessageLabel: UILabel {
             attributesNeedUpdate = true
         } else {
             updateAttributes(for: [detector])
+        }
+    }
+
+    public func setValue(
+        _ value: String,
+        withAttributes attributes: [NSAttributedString.Key: Any],
+        in range: NSRange
+    ) {
+        self.rangeAttributes[range] = attributes
+        self.rangesForValues[range] = value
+        if isConfiguring {
+            attributesNeedUpdate = true
+        } else {
+            updateAttributes(for: enabledDetectors)
+        }
+    }
+
+    public func clearRanges() {
+        self.rangeAttributes.removeAll()
+        self.rangesForValues.removeAll()
+
+        if isConfiguring {
+            attributesNeedUpdate = true
+        } else {
+            updateAttributes(for: enabledDetectors)
         }
     }
 
@@ -281,10 +309,17 @@ open class MessageLabel: UILabel {
                 let attributes = detectorAttributes(for: detector)
                 mutableAttributedString.addAttributes(attributes, range: range)
             }
-
-            let updatedString = NSAttributedString(attributedString: mutableAttributedString)
-            textStorage.setAttributedString(updatedString)
         }
+
+        for (range) in Array(self.rangeAttributes.keys) {
+            guard let attributes = self.rangeAttributes[range] else { return }
+
+            mutableAttributedString.addAttributes(attributes, range: range)
+        }
+
+        let updatedString = NSAttributedString(attributedString: mutableAttributedString)
+        textStorage.setAttributedString(updatedString)
+        
     }
 
     private func detectorAttributes(for detectorType: DetectorType) -> [NSAttributedString.Key: Any] {
@@ -463,6 +498,14 @@ open class MessageLabel: UILabel {
                 }
             }
         }
+
+        for range in Array(self.rangeAttributes.keys) {
+            if range.contains(index) {
+                self.handleGesture(inRange: range, value: self.rangesForValues[range] ?? "")
+                return true
+            }
+        }
+
         return false
     }
 
@@ -537,6 +580,10 @@ open class MessageLabel: UILabel {
 
     private func handleCustom(_ pattern: String, match: String) {
         delegate?.didSelectCustom(pattern, match: match)
+    }
+
+    private func handleGesture(inRange range: NSRange, value: String) {
+        delegate?.didSelectRange(range, value: value)
     }
 
 }

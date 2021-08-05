@@ -76,6 +76,13 @@ public protocol MessageLabelDelegate: AnyObject {
     ///   - match: part that match with the regular expression
     func didSelectCustom(_ pattern: String, match: String?)
 
+    /// Triggered when a tap occurs on a defined range
+    ///
+    /// - Parameters:
+    ///   - range: tapped range
+    ///   - value: tapped range value
+    func didSelectRange(_ range: NSRange, value: String)
+
 }
 
 public extension MessageLabelDelegate {
@@ -95,5 +102,7 @@ public extension MessageLabelDelegate {
     func didSelectHashtag(_ hashtag: String) {}
 
     func didSelectCustom(_ pattern: String, match: String?) {}
+
+    func didSelectRange(_ range: NSRange, value: String) {}
 
 }
